@@ -1,7 +1,5 @@
 # PyCDA
-This repo is an implementation of Constructing Self-motivated Pyramid Curriculums for Cross-Domain Semantic Segmentation: A Non-Adversarial Approach. 
-
-## Highlight
+Code for Constructing Self-motivated Pyramid Curriculums for Cross-Domain Semantic Segmentation: A Non-Adversarial Approach. 
 
 ## Enviorment
 The code is developed under the following configuration.
