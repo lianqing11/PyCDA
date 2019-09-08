@@ -1,13 +1,12 @@
-# Unsupervised domain adaptation framework for semantic segmentation
-
-This repo is an implementation of current state-of-the-art unsupervised domain adaptation for semantic segmentation works. 
+# PyCDA
+This repo is an implementation of Constructing Self-motivated Pyramid Curriculums for Cross-Domain Semantic Segmentation: A Non-Adversarial Approach. 
 
 ## Highlight
 
 ## Enviorment
 The code is developed under the following configuration.
 #### Hardware:
-2-8 GPUs(With at least 11G GPU memories), which is set for the correspoinding batch size. 
+4-8 GPUs(With at least 11G GPU memories), which is set for the correspoinding batch size. 
 
 #### Software:
 Python(3.6) and Pytorch(0.4.1) is necessary before running the scripts. To install the required pythonn packages(expect Pytorch), run 
@@ -46,7 +45,7 @@ sh run.sh train_pycda_local.py cfgs/pycda_local_exp001.yaml
 
 ### [Convert batchnorm statistics]
 ```
-sh run.sh test_adabn.py cfgs/pycda_local_exp001.yaml
+sh run.sh test_adabn.py $your_script
 ```
 ## Performance
 
