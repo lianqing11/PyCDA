@@ -41,7 +41,7 @@ sh run.sh train_adabn.py cfgs/adabn_exp001.yaml
 sh run.sh train_pycda_local.py cfgs/pycda_local_exp001.yaml
 ```
 
-### [Convert batchnorm statistics]
+### Convert batchnorm statistics
 ```
 sh run.sh test_adabn.py $your_script
 ```
