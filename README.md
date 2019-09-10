@@ -21,7 +21,7 @@ To monitor the convergence of the network, we split 500 images out of Cityscapes
 You can check it in the ```./dataset/cityscapes_list/directory```.
 
 To train on your own enviorment, please download the dataset and modify the dataset path in the corresponding cfgs docunment.
-
+Downloaded [pretrained model](https://drive.google.com/drive/folders/1EgpKK5GwmFNM3XkyNHPtj52ZwDiogRMB?usp=sharing)
 
 
 ## Training
