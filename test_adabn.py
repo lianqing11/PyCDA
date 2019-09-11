@@ -596,46 +596,10 @@ def main():
                 if mIoUs > best_mIoUs:
                     is_best = True
                     best_mIoUs = mIoUs
-                    #test validation
-                    model.eval()
-                    val_time = time.time()
-                    hist = np.zeros((19,19))
-                    f = open(args.result_dir, 'a')
-                    for index, batch in tqdm(enumerate(test1loader)):
-                        with torch.no_grad():
-                            image, name = batch
-                            results = model(Variable(image).cuda(), None)
-                            output2 = results[0]
-                            pred = interp_val(output2)
-                            del output2
-                            pred = pred.cpu().data[0].numpy()
-                            pred = pred.transpose(1, 2, 0)
-                            pred = np.asarray(np.argmax(pred, axis=2), dtype=np.uint8)
-                            label = np.array(Image.open(gt_imgs_test[index]))
-                            #label = np.array(label.resize(com_size, Image.
-                            label = label_mapping(label, mapping)
-                            #logger.info(label.shape)
-                            hist += fast_hist(label.flatten(), pred.flatten(), 19)
-                    mIoUs = per_class_iu(hist)
-                    for ind_class in range(args.num_classes):
-                        logger.info('===>' + name_classes[ind_class] + ':\t' + str(round(mIoUs[ind_class] * 100, 2)))
-                        tb_logger.add_scalar(name_classes[ind_class] + '_mIoU', mIoUs[ind_class], i_iter)
-
-                    mIoUs = round(np.nanmean(mIoUs) *100, 2)
-                    is_best_test = False
-                    logger.info(mIoUs)
-                    tb_logger.add_scalar('test mIoU', mIoUs, i_iter)
-                    if mIoUs > best_test_mIoUs:
-                        best_test_mIoUs = mIoUs
-                        is_best_test = True
-
-                        #finish test validation
                 else:
                     is_best = False
                 logger.info("best mIoU {}".format(best_mIoUs))
-                logger.info("best test mIoU {}".format(best_test_mIoUs))
                 net_encoder, net_decoder, net_disc, net_reconst = nets
-                is_best_test = False
             model.train()
 if __name__ == '__main__':
     main()
