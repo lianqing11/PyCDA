@@ -38,7 +38,7 @@ sh run.sh train_adabn.py cfgs/adabn_exp001.yaml
 
 ### [PyCDA]()
 ```
-sh run.sh train_pycda_local.py cfgs/pycda_local_exp001.yaml
+Will be available soon.
 ```
 
 ### Convert batchnorm statistics
