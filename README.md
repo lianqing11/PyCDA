@@ -21,7 +21,6 @@ year = {2019}
 ## Framework
 ![](./fig/model.PNG)
 
-## Quantitative Results
 ## Enviorment
 The code is developed under the following configuration.
 #### Hardware:
