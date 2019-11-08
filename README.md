@@ -1,6 +1,27 @@
 # PyCDA
 Code for Constructing Self-motivated Pyramid Curriculums for Cross-Domain Semantic Segmentation: A Non-Adversarial Approach. 
+## Paper
+[Constructing Self-motivated Pyramid Curriculums for Cross-Domain Semantic Segmentation: A Non-Adversarial Approach](https://arxiv.org/abs/1908.09547) <br />
+Qing Lian, Fengmao Lv, Lixin Duan, Boqing Gong<br />
+The IEEE International Conference on Computer Vision (ICCV) 2019.
 
+Please cite our paper if you find it useful for your research.
+
+```
+@InProceedings{Lian_2019_ICCV,
+author = {Lian, Qing and Lv, Fengmao and Duan, Lixin and Gong, Boqing},
+title = {Constructing Self-Motivated Pyramid Curriculums for Cross-Domain Semantic Segmentation: A Non-Adversarial Approach},
+booktitle = {The IEEE International Conference on Computer Vision (ICCV)},
+month = {October},
+year = {2019}
+}
+```
+
+
+## Framework
+![](fig/model.png)
+
+## Quantitative Results
 ## Enviorment
 The code is developed under the following configuration.
 #### Hardware:
@@ -46,10 +67,20 @@ Will be available soon.
 sh run.sh test_adabn.py $your_script
 ```
 ## Performance
+![](fig/exp.png)
+
+
+## Quantitative Results
+![](fig/quantitive.png)
+
+
 
 
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details
 
+
+## Acknowledgement
+This code is heavily borrowed from [Semantic-segmentation-pytorch](https://github.com/CSAILVision/semantic-segmentation-pytorch), [AdaptSeg](https://github.com/wasidennis/AdaptSegNet), and [CBST](https://github.com/yzou2/CBST)
 
