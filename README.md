@@ -19,7 +19,7 @@ year = {2019}
 
 
 ## Framework
-![](fig/model.png)
+![](./fig/model.png)
 
 ## Quantitative Results
 ## Enviorment
