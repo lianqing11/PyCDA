@@ -19,7 +19,7 @@ year = {2019}
 
 
 ## Framework
-![](./fig/model.png)
+![](./fig/model.PNG)
 
 ## Quantitative Results
 ## Enviorment
@@ -67,11 +67,11 @@ Will be available soon.
 sh run.sh test_adabn.py $your_script
 ```
 ## Performance
-![](fig/exp.png)
+![](fig/exp.PNG)
 
 
 ## Quantitative Results
-![](fig/quantitive.png)
+![](fig/quantitive.PNG)
 
 
 
