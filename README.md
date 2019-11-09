@@ -65,7 +65,7 @@ Will be available soon.
 ```
 sh run.sh test_adabn.py $your_script
 ```
-## Performance
+## Performance (GTAV-> Cityscapes)
 ![](fig/exp.PNG)
 
 
