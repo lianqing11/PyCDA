@@ -1,3 +1,6 @@
 *.pyc
+./data/*
 *.png
 *.jpg
+*log
+
