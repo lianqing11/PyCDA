@@ -30,11 +30,6 @@ class SegmentationModule(SegmentationModuleBase):
         self.discriminator = net_discriminator
         self.reconst = net_reconst
         self.aux_discriminator = aux_discriminator
-        self.run_segment = True
-        self.run_disc = False
-        self.run_reconst = False
-        self.detach_disc = True
-        self.disc_feature_map = True
         self.criterion = nn.CrossEntropyLoss(weight=weighted_softmax, ignore_index=255)
     def forward(self, image, label):
             # if self.deep_sup_scale is not None: # use deep supervision technique
@@ -56,47 +51,6 @@ class SegmentationModule(SegmentationModuleBase):
             else:
                 return seg, aux_seg
 
-class AttSegmentationModule(SegmentationModuleBase):
-    def __init__(self, net_enc, net_dec=None, use_aux=False, net_discriminator=None,
-                 net_reconst=None, aux_discriminator=False, weighted_softmax=None):
-        super(AttSegmentationModule, self).__init__()
-        self.encoder = net_enc
-        self.decoder = net_dec
-        self.use_aux = use_aux
-        self.discriminator = net_discriminator
-        self.reconst = net_reconst
-        self.aux_discriminator = aux_discriminator
-        self.run_segment = True
-        self.run_disc = False
-        self.run_reconst = False
-        self.detach_disc = True
-        self.disc_feature_map = True
-        self.criterion = nn.CrossEntropyLoss(weight=weighted_softmax, ignore_index=255)
-        self.att_criterion = nn.BCEWithLogitsLoss()
-    def forward(self, image, label):
-            # if self.deep_sup_scale is not None: # use deep supervision technique
-                # (pred, pred_deepsup) = self.decoder(self.encoder(feed_dict['img_data'], return_feature_maps=True))
-            # else:
-                # pred = self.decoder(self.encoder(feed_dict['img_data'], return_feature_maps=True))
-
-            conv_out = self.encoder(image)
-            seg, aux_seg, att = self.decoder(conv_out)
-
-
-            interp_size = image.size()[2:]
-            seg = nn.functional.upsample(seg, interp_size, mode='bilinear', align_corners=False)
-            att = nn.functional.upsample(att, interp_size, mode='bilinear', align_corners=False)
-            if self.training and label is not None:
-                aux_seg = nn.functional.upsample(aux_seg, interp_size, mode='bilinear', align_corners=False)
-                loss_seg = self.criterion(seg, label)
-                loss_aux_seg = self.criterion(aux_seg,label)
-                predict = torch.argmax(nn.functional.softmax(seg), dim=1)
-                correct_label = (predict==label).float()
-                att_loss = self.att_criterion(att, correct_label.unsqueeze(1))
-
-                return seg, aux_seg, att, loss_seg, loss_aux_seg, att_loss
-            else:
-                return seg, aux_seg, att
 
 
 def conv3x3(in_planes, out_planes, stride=1, has_bias=False):
@@ -192,27 +146,11 @@ class ModelBuilder():
     def build_decoder(self, arch='ppm_bilinear_deepsup',
                       fc_dim=512, num_class=19,
                       weights='', use_aux=True):
-        if arch == 'c1_bilinear':
-            net_decoder = C1BilinearDeepSup(
-                num_class=num_class,
-                fc_dim=fc_dim,
-                use_aux=use_aux)
-        elif arch == 'ppm_bilinear':
+        if arch == 'ppm_bilinear':
             net_decoder = PPMBilinear(
                 num_class=num_class,
                 fc_dim=fc_dim,
                 use_aux=use_aux)
-        elif arch == 'ppm_bilinear_detach':
-            net_decoder = PPMBilinear_detach(
-                num_class=num_class,
-                fc_dim=fc_dim,
-                use_aux=use_aux)
-        elif arch == 'ppm_bilinear_att':
-            net_decoder = PPMBilinear_att(
-                num_class=num_class,
-                fc_dim=fc_dim,
-                use_aux=use_aux)
-
         elif arch == 'upernet':
             net_decoder = UPerNet(
                 num_class=num_class,
@@ -496,160 +434,6 @@ class PPMBilinear(nn.Module):
             return x, None
 
 # pyramid pooling, bilinear upsample
-class PPMBilinear_att(nn.Module):
-    def __init__(self, num_class=19, fc_dim=2048,
-                 use_aux=False, pool_scales=(1, 2, 3, 6)):
-        super(PPMBilinear_att, self).__init__()
-        self.use_aux = use_aux
-        self.ppm = []
-        for scale in pool_scales:
-            self.ppm.append(nn.Sequential(
-                nn.AdaptiveAvgPool2d(scale),
-                nn.Conv2d(fc_dim, 512, kernel_size=1, bias=False),
-                SynchronizedBatchNorm2d(512),
-                nn.ReLU(inplace=True)
-            ))
-        self.ppm = nn.ModuleList(self.ppm)
-        if self.use_aux:
-            self.cbr_deepsup = conv3x3_bn_relu(fc_dim // 2, fc_dim // 4, 1)
-            self.conv_last_deepsup = nn.Conv2d(fc_dim // 4, num_class, 1, 1, 0)
-            self.dropout_deepsup = nn.Dropout2d(0.1)
-
-
-        self.conv_last = nn.Sequential(
-            nn.Conv2d(fc_dim+len(pool_scales)*512, 512,
-                      kernel_size=3, padding=1, bias=False),
-            SynchronizedBatchNorm2d(512),
-            nn.ReLU(inplace=True),
-            nn.Dropout2d(0.1),
-            nn.Conv2d(512, num_class, kernel_size=1)
-        )
-        # self.dropout_deepsup = nn.Dropout2d(0.1)
-        # supervised attention
-        self.attention_block1 = nn.Sequential(
-            nn.Conv2d(fc_dim, 64,
-                    kernel_size=3, padding=1, bias=False),
-            SynchronizedBatchNorm2d(64),
-            nn.ReLU(inplace=True))
-        self.attention_block2 = nn.Sequential(
-            nn.Conv2d(64+num_class, 32,
-                      kernel_size=3, padding=1, bias=False),
-            SynchronizedBatchNorm2d(32),
-            nn.ReLU(inplace=True),
-            nn.Conv2d(32, 1,
-                      kernel_size=3, padding=1, bias=False)
-        )
-
-
-
-    def forward(self, conv_out):
-        conv5 = conv_out[-1]
-        input_size = conv5.size()
-        ppm_out = [conv5]
-        for pool_scale in self.ppm:
-            ppm_out.append(nn.functional.upsample(
-                pool_scale(conv5),
-                (input_size[2], input_size[3]),
-                mode='bilinear', align_corners=False))
-        ppm_out = torch.cat(ppm_out, 1)
-
-        x = self.conv_last(ppm_out)
-
-
-        pseudo_attention = self.attention_block1(conv5)
-        pseudo_attention = torch.cat([pseudo_attention, x], 1)
-        pseudo_attention = self.attention_block2(pseudo_attention)
-        if self.use_aux and self.training:
-            conv4 = conv_out[-2]
-            _ = self.cbr_deepsup(conv4)
-            _ = self.dropout_deepsup(_)
-            _ = self.conv_last_deepsup(_)
-
-        # x = nn.functional.log_softmax(x, dim=1)
-        # _ = nn.functional.log_softmax(_, dim=1)
-            return x, _, pseudo_attention
-        else:
-            return x, None, pseudo_attention
-
-
-# pyramid pooling, bilinear upsample
-class PPMBilinear_detach(nn.Module):
-    def __init__(self, num_class=19, fc_dim=2048,
-                 use_aux=False, pool_scales=(1, 2, 3, 6)):
-        super(PPMBilinear_detach, self).__init__()
-        self.use_aux = use_aux
-        self.ppm = []
-        for scale in pool_scales:
-            self.ppm.append(nn.Sequential(
-                nn.AdaptiveAvgPool2d(scale),
-                nn.Conv2d(fc_dim, 512, kernel_size=1, bias=False),
-                SynchronizedBatchNorm2d(512),
-                nn.ReLU(inplace=True)
-            ))
-        self.ppm = nn.ModuleList(self.ppm)
-        if self.use_aux:
-            self.cbr_deepsup = conv3x3_bn_relu(fc_dim // 2, fc_dim // 4, 1)
-            self.conv_last_deepsup = nn.Conv2d(fc_dim // 4, num_class, 1, 1, 0)
-            self.dropout_deepsup = nn.Dropout2d(0.1)
-
-
-        self.conv_last = nn.Sequential(
-            nn.Conv2d(fc_dim+len(pool_scales)*512, 512,
-                      kernel_size=3, padding=1, bias=False),
-            SynchronizedBatchNorm2d(512),
-            nn.ReLU(inplace=True),
-            nn.Dropout2d(0.1),
-            nn.Conv2d(512, num_class, kernel_size=1)
-        )
-        # self.dropout_deepsup = nn.Dropout2d(0.1)
-        # supervised attention
-        self.attention_block1 = nn.Sequential(
-            nn.Conv2d(fc_dim, 64,
-                    kernel_size=3, padding=1, bias=False),
-            SynchronizedBatchNorm2d(64),
-            nn.ReLU(inplace=True))
-        self.attention_block2 = nn.Sequential(
-            nn.Conv2d(64+num_class, 32,
-                      kernel_size=3, padding=1, bias=False),
-            SynchronizedBatchNorm2d(32),
-            nn.ReLU(inplace=True),
-            nn.Conv2d(32, 1,
-                      kernel_size=3, padding=1, bias=False)
-        )
-
-
-
-    def forward(self, conv_out):
-        conv5 = conv_out[-1]
-        input_size = conv5.size()
-        ppm_out = [conv5]
-        for pool_scale in self.ppm:
-            ppm_out.append(nn.functional.upsample(
-                pool_scale(conv5),
-                (input_size[2], input_size[3]),
-                mode='bilinear', align_corners=False))
-        ppm_out = torch.cat(ppm_out, 1)
-
-        x = self.conv_last(ppm_out)
-
-
-        if self.use_aux and self.training:
-            conv4 = conv_out[-2]
-            _ = self.cbr_deepsup(conv4)
-            _ = self.dropout_deepsup(_)
-            _ = self.conv_last_deepsup(_)
-
-        pseudo_attention = self.attention_block1(conv5.detach())
-        pseudo_attention = torch.cat([pseudo_attention, x.detach()], 1)
-        pseudo_attention = self.attention_block2(pseudo_attention)
-        # x = nn.functional.log_softmax(x, dim=1)
-        # _ = nn.functional.log_softmax(_, dim=1)
-        if self.training:
-            return x, _, pseudo_attention
-        else:
-            return x, None, pseudo_attention
-
-
 
 # upernet
 class UPerNet(nn.Module):

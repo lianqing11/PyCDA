@@ -3,7 +3,6 @@ define the convolutinal gaussian blur
 define the softmax loss
 
 '''
-import math
 import time
 from tqdm import tqdm
 import os
@@ -19,7 +18,6 @@ from lib.nn import user_scattered_collate, patch_replication_callback
 from torch.autograd import Variable
 import segtransforms
 import torch.backends.cudnn as cudnn
-import torch.nn.functional as F
 import os.path as osp
 import matplotlib.pyplot as plt
 from tensorboardX import SummaryWriter
@@ -30,8 +28,6 @@ from torchvision import transforms
 from dataset.gta5_dataset import GTA5DataSet
 from dataset.cityscapes_dataset import cityscapesDataSet, fake_cityscapesDataSet
 from PIL import Image
-from tensorboardX import SummaryWriter
-import logging
 IMG_MEAN = np.array((104.00698793, 116.66876762, 122.67891434), dtype=np.float32)
 
 def get_arguments():
@@ -40,8 +36,8 @@ def get_arguments():
     Returns:
       A list of parsed arguments.
     """
-    parser = argparse.ArgumentParser(description="DeepLab-ResNet Network")
-    parser.add_argument('--config', type=str, default='cfgs/reproduce_exp001.yaml')
+    parser = argparse.ArgumentParser(description="Adabn Network")
+    parser.add_argument('--config', type=str, default='cfgs/adabn_exp001.yaml')
     return parser.parse_args()
 
 
@@ -56,75 +52,6 @@ def label_mapping(input, mapping):
     for ind in range(len(mapping)):
         output[input == mapping[ind][0]] = mapping[ind][1]
     return np.array(output, dtype=np.int64)
-
-
-def max_crop_local(pred, channel, box, box_threshold):
-    local_center_target = F.softmax(pred)[:, channel]
-    feature_maps = []
-    for i in range(pred.size(0)):
-        local_center = torch.argmax(local_center_target[i,:,:])
-        local_center_val = torch.max(local_center_target[i,:,:])
-        local_center = local_center / local_center_target.shape[-1], \
-            local_center % local_center_target.shape[-1]
-        local_center = local_center[0].item(), local_center[1].item()
-
-        sl = [local_center[0] - int(box / 2),
-              local_center[0] + int(box / 2) + box % 2,
-              local_center[1] - int(box / 2),
-              local_center[1] + int(box / 2) + box % 2]
-        src = [max(sl[0], 0),
-               min(sl[1], pred.shape[-2]),
-               max(sl[2], 0),
-               min(sl[3], pred.shape[-1])]
-        feature_map = pred[i, :, src[0]:src[1], src[2]:src[3]]
-        if local_center_val > box_threshold:
-            feature_maps.append(feature_map.unsqueeze(0))
-    return feature_maps
-
-
-def threshold_crop_local(pred, channel, box, box_threshold, nms_threshold, max_num_bbx):
-    local_center_target = F.softmax(pred)[:, channel]
-    feature_maps = []
-    for i in range(pred.size(0)):
-        detas = []
-        local_center_target_i = local_center_target[i, :, :]
-        num_local_center = torch.sum(local_center_target_i > box_threshold).long()
-        max_i = False
-        temp_local_num_center = num_local_center
-        feature_map = []
-        if num_local_center > max_num_bbx:
-            num_local_center = max_num_bbx
-            max_i = True
-        if num_local_center == 0:
-            continue
-        local_center_val, local_center = torch.topk(local_center_target_i.view(-1), num_local_center)
-        for i_center in range(num_local_center):
-            local_center_i = local_center[i_center].item()
-            local_center_val_i = local_center_val[i_center].item()
-            local_center_i = int(local_center_i / local_center_target.shape[-1]), \
-                    int(local_center_i % local_center_target.shape[-1])
-            sl = [local_center_i[0] - int(box / 2),
-                  local_center_i[0] + int(box / 2) + box % 2,
-                  local_center_i[1] - int(box / 2),
-                  local_center_i[1] + int(box / 2) + box % 2]
-            src = [int(max(sl[0], 0)),
-                   int(min(sl[1], pred.shape[-2] -1)),
-                   int(max(sl[2], 0)),
-                   int(min(sl[3], pred.shape[-1] -1))]
-            src.append(local_center_val_i)
-            detas.append(src)
-        if len(detas) != 0:
-            detas = np.asarray(detas)
-            keep = nms(detas, nms_threshold)
-        detas = detas[keep]
-        detas = list(detas)
-        #if max_i == True:
-        #    detas = detas*int(temp_local_num_center/ float(max_num_bbx))
-        for deta in detas:
-            feature_map.append(pred[i, :, int(deta[0]):int(deta[1]), int(deta[2]):int(deta[3])].unsqueeze(0))
-        feature_map.extend([max_i, temp_local_num_center])
-        feature_maps.append(feature_map)
-    return feature_maps
 
 
 
@@ -155,52 +82,12 @@ def nms(dets, thresh):
 
 
 
-def nms_bbx_attention(pred, which_class, box, box_threshold, nms_threshold, max_num_bbx, inner_threshold):
-    avg_pooling = torch.nn.AdaptiveAvgPool2d(1)
-    target_max_crop_sizes = threshold_crop_local(pred, which_class, box, box_threshold, nms_threshold, max_num_bbx)
-    logits_list = []
-    for target_max_crop_size in target_max_crop_sizes:
-        sub_logits_list = []
-        if len(target_max_crop_size) != 0:
-            for i in range(len(target_max_crop_size) - 2):
-                exp_target = target_max_crop_size[i]
-                exp_target = avg_pooling(exp_target)
-                prob_target = nn.functional.softmax(exp_target)
-                if prob_target[0, which_class] > inner_threshold:
-                    sub_logits_list.append(exp_target.view(-1, 19))
-                else:
-                    continue
-            max_i, temp_num = target_max_crop_size[-2], target_max_crop_size[-1]
-            if max_i == True:
-                sub_logits_list = sub_logits_list * int(temp_num / float(max_num_bbx))
-            logits_list.extend(sub_logits_list)
-    if len(logits_list) != 0:
-        logits_list = torch.cat(logits_list, dim=0)
-        gt = Variable(torch.LongTensor(logits_list.size(0)).fill_(which_class).cuda()).view(-1,1)
-        return logits_list, gt
-    else:
-        return None, None
 def fast_hist(a, b, n):
     k = (a >= 0) & (a < n)
     return np.bincount(n * a[k].astype(int) + b[k], minlength=n ** 2).reshape(n, n)
 
 def per_class_iu(hist):
     return np.diag(hist) / (hist.sum(1) + hist.sum(0) - np.diag(hist))
-
-
-def loss_calc(pred, label):
-    """
-    This function returns cross entropy loss for semantic segmentation
-    """
-    # out shape batch_size x channels x h x w -> batch_size x channels x h x w
-    # label shape h x w x 1 x batch_size  -> batch_size x 1 x h x w
-    label = Variable(label.long()).cuda()
-    criterion = torch.nn.CrossEntropyLoss(ignore_index = 255).cuda()
-
-    return criterion(pred, label)
-
-
-
 
 
 
@@ -320,7 +207,7 @@ def main():
                          transforms.ToTensor(),
                          test_normalize])
 
-    testloader = data.DataLoader(cityscapesDataSet(
+    valloader = data.DataLoader(cityscapesDataSet(
                                        args.data_dir_target,
                                        args.data_list_target_val,
                                        crop_size=input_size_test,
@@ -331,10 +218,11 @@ def main():
         info = json.load(fp)
     mapping = np.array(info['label2train'], dtype=np.int)
     label_path_list_val = args.label_path_list_val
+    label_path_list_test = args.label_path_list_test
     label_path_list_test = './dataset/cityscapes_list/label.txt'
     gt_imgs_val = open(label_path_list_val, 'r').read().splitlines()
     gt_imgs_val = [osp.join(args.data_dir_target_val, x) for x in gt_imgs_val]
-    test1loader = data.DataLoader(cityscapesDataSet(
+    testloader = data.DataLoader(cityscapesDataSet(
                                     args.data_dir_target,
                                     args.data_list_target_test,
                                     crop_size=input_size_test,
@@ -436,12 +324,6 @@ def main():
 
 
     criterion_seg = torch.nn.CrossEntropyLoss(ignore_index=255,reduce=False)
-    criterion_pseudo = torch.nn.BCEWithLogitsLoss(reduce=False).cuda()
-    bce_loss = torch.nn.BCEWithLogitsLoss().cuda()
-    criterion_reconst = torch.nn.L1Loss().cuda()
-    criterion_soft_pseudo = torch.nn.MSELoss(reduce=False).cuda()
-    criterion_box = torch.nn.CrossEntropyLoss(ignore_index=255, reduce=False)
-    interp = nn.Upsample(size=(input_size[1], input_size[0]),align_corners=True, mode='bilinear')
     interp_target = nn.Upsample(size=(input_size_target[1], input_size_target[0]), align_corners=True, mode='bilinear')
 
     # labels for adversarial training
@@ -452,20 +334,13 @@ def main():
     optimizer_encoder, optimizer_decoder, optimizer_disc, optimizer_reconst = optimizers
     batch_time = AverageMeter(10)
     loss_seg_value1 = AverageMeter(10)
+    is_best_test = True
     best_mIoUs = 0
-    best_test_mIoUs = 0
     loss_seg_value2 = AverageMeter(10)
-    loss_reconst_source_value = AverageMeter(10)
-    loss_reconst_target_value = AverageMeter(10)
-    loss_source_disc_value = AverageMeter(10)
-    loss_source_disc_adv_value = AverageMeter(10)
     loss_balance_value = AverageMeter(10)
-    loss_target_disc_value = AverageMeter(10)
-    loss_target_disc_adv_value = AverageMeter(10)
     loss_pseudo_value = AverageMeter(10)
     bounding_num = AverageMeter(10)
     pseudo_num = AverageMeter(10)
-    loss_bbx_att_value = AverageMeter(10)
 
     for i_iter in range(args.num_steps):
         # train G
@@ -482,25 +357,15 @@ def main():
 
         loss_seg2 = torch.mean(loss_seg2)
         loss_seg1 = torch.mean(loss_seg1)
-        loss = args.lambda_trade_off*(loss_seg2+args.lambda_seg*loss_seg1)
-        '''
-        source_tensor = Variable(torch.FloatTensor(disc.size()).fill_(source_label)).cuda()
-        loss_source_disc = bce_loss(disc, source_tensor)
-
-        loss += loss_source_disc * args.lambda_disc
-        '''
-        # proper normalization
+        loss = loss_seg2+args.lambda_seg*loss_seg1
         #logger.info(loss_seg1.data.cpu().numpy())
         loss_seg_value2.update(loss_seg2.data.cpu().numpy())
-        #loss_source_disc_value.update(loss_source_disc.data.cpu().numpy())
         # train with target
         optimizer_encoder.zero_grad()
         optimizer_decoder.zero_grad()
         loss.backward()
-        #optimizer.step()
         optimizer_encoder.step()
         optimizer_decoder.step()
-        #optimizer_disc.step()
 
         del seg, loss_seg2
 
@@ -533,30 +398,9 @@ def main():
                         'Time = {batch_time.avg:.3f}\t'
                         'loss_seg1 = {loss_seg1.avg:4f}\t'
                         'loss_seg2 = {loss_seg2.avg:.4f}\t'
-                        'loss_source_disc = {loss_source_disc.avg:.4f}\t'
-                        'loss_source_disc_adv = {loss_source_disc_adv.avg:.4f}\t'
-                        'loss_target_disc = {loss_target_disc.avg:.4f}\t'
-                        'loss_target_disc_adv = {loss_target_disc_adv.avg:.4f}\t'
-                        'loss_reconst_source = {loss_reconst_source.avg:.4f}\t'
-                        'loss_bbx_att = {loss_bbx_att.avg:.4f}\t'
-                        'loss_reconst_target = {loss_reconst_target.avg:.4f}\t'
-                        'loss_pseudo = {loss_pseudo.avg:.4f}\t'
-                        'loss_balance = {loss_balance.avg:.4f}\t'
-                        'bounding_num = {bounding_num.avg:.4f}\t'
-                        'pseudo_num = {pseudo_num.avg:4f}\t'
                         'lr_encoder = {lr_encoder:.8f} lr_decoder = {lr_decoder:.8f}'.format(
                          i_iter, args.num_steps, batch_time=batch_time,
                          loss_seg1=loss_seg_value1, loss_seg2=loss_seg_value2,
-                         loss_source_disc = loss_source_disc_value, loss_pseudo=loss_pseudo_value,
-                         loss_source_disc_adv = loss_source_disc_adv_value,
-                         loss_bbx_att = loss_bbx_att_value,
-                         bounding_num = bounding_num,
-                         pseudo_num = pseudo_num,
-                         loss_target_disc = loss_target_disc_value,
-                         loss_target_disc_adv = loss_target_disc_adv_value,
-                         loss_reconst_source=loss_reconst_source_value,
-                         loss_balance=loss_balance_value,
-                         loss_reconst_target=loss_reconst_target_value,
                          lr_encoder=lr_encoder,
                          lr_decoder=lr_decoder))
 
@@ -565,15 +409,7 @@ def main():
             if not tb_logger is None:
                 tb_logger.add_scalar('loss_seg_value1', loss_seg_value1.avg, i_iter)
                 tb_logger.add_scalar('loss_seg_value2', loss_seg_value2.avg, i_iter)
-                tb_logger.add_scalar('loss_source_disc', loss_source_disc_value.avg, i_iter)
-                tb_logger.add_scalar('loss_source_disc_adv', loss_source_disc_adv_value.avg, i_iter)
-                tb_logger.add_scalar('loss_target_disc', loss_target_disc_value.avg, i_iter)
-                tb_logger.add_scalar('loss_target_disc_adv', loss_target_disc_adv_value.avg, i_iter)
-                tb_logger.add_scalar('bounding_num', bounding_num.avg, i_iter)
-                tb_logger.add_scalar('pseudo_num', pseudo_num.avg, i_iter)
-                tb_logger.add_scalar('loss_pseudo', loss_pseudo_value.avg, i_iter)
                 tb_logger.add_scalar('lr', lr_encoder, i_iter)
-                tb_logger.add_scalar('loss_balance', loss_balance_value.avg, i_iter)
             #####
             #save image result
 
@@ -583,8 +419,7 @@ def main():
 
                 val_time = time.time()
                 hist = np.zeros((19,19))
-                f = open(args.result_dir, 'a')
-                for index, batch in tqdm(enumerate(testloader)):
+                for index, batch in tqdm(enumerate(valloader)):
                     with torch.no_grad():
                         image, name = batch
                         output2, _ = model(Variable(image).cuda(), None)
@@ -604,11 +439,16 @@ def main():
                     tb_logger.add_scalar(name_classes[ind_class] + '_mIoU', mIoUs[ind_class], i_iter)
 
                 mIoUs = round(np.nanmean(mIoUs) *100, 2)
+                if mIoUs >= best_mIoUs:
+                    is_best_test = True
+                    best_mIoUs = mIoUs
+                else:
+                    is_best_test = False
 
-                logger.info(mIoUs)
+                logger.info("current mIoU {}".format(mIoUs))
+                logger.info("best mIoU {}".format(best_mIoUs))
                 tb_logger.add_scalar('val mIoU', mIoUs, i_iter)
                 tb_logger.add_scalar('val mIoU', mIoUs, i_iter)
-                f.write('i_iter:{:d},\tmiou:{:0.3f} \n'.format(i_iter, mIoUs))
                 net_encoder, net_decoder, net_disc, net_reconst = nets
                 save_checkpoint(net_encoder, 'encoder', i_iter, args, is_best_test)
                 save_checkpoint(net_decoder, 'decoder', i_iter, args, is_best_test)

@@ -17,12 +17,12 @@ common:
     num_workers: 4
     gaussian_kernel_size: 5
     gaussian_sigma: 0.8
-    data_dir: /data/lianqing//workspace/Adapt_seg/data/GTA5
+    data_dir: ./data/GTA5
     data_list: ./dataset/gta5_list/train.txt
     ignore_label: 255
     input_size: 1024,560
-    data_dir_target: /data/lianqing/workspace/Adapt_seg/data/Cityscapes
-    data_list_target: ./dataset/cityscapes_list/train2.txt
+    data_dir_target: ./data/Cityscapes
+    data_list_target: ./dataset/cityscapes_list/train_train.txt
     input_size_target: 1024,512
     input_size_crop: 560, 480
     input_size_target_crop: 560, 480
@@ -32,9 +32,6 @@ common:
     reconst: False
     lr_pow: 0.9
     conf_threshold: 0.5
-    lambda_pseudo: 0.5
-    lambda_soft_pseudo: 0.025
-    lambda_balance: 1
     lr_encoder: 0.0016
     lr_decoder: 0.016
     lr_disc: 0.0016
@@ -44,9 +41,6 @@ common:
     lambda_adv_target1: 0
     lambda_adv_target2: 0
     #lambda_adv_multiscale: 0.00025
-    box_size: [2,3]
-    box_threshold: [0.5]
-    lambda_box_pseudo: [0.05]
     beta1: 0.9
     print_freq: 10
     num_classes: 19
@@ -70,9 +64,10 @@ common:
     com_size: 2048,1024
     input_size_test: 1024,512
     result_dir: test_IoU.txt
-    data_list_target_val: ./dataset/cityscapes_list/val2.txt
-    data_dir_target_val: /data/lianqing/workspace/Adapt_seg/data/Cityscapes/gtFine/train
+    data_list_target_val: ./dataset/cityscapes_list/train_val.txt
+    data_dir_target_val: ./data/Cityscapes/gtFine/train
     data_list_target_test: ./dataset/cityscapes_list/val.txt
-    data_dir_target_test: /data/lianqing/workspace/Adapt_seg/data/Cityscapes/gtFine/val
-    label_path_list_val: ./dataset/cityscapes_list/label2.txt
+    data_dir_target_test: ./data/Cityscapes/gtFine/val
+    label_path_list_val: ./dataset/cityscapes_list/train_val_label.txt
+    label_path_list_test: ./dataset/cityscapes_list/label.txt
     
