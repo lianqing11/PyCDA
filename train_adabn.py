@@ -370,10 +370,11 @@ def main():
         del seg, loss_seg2
 
         _, batch = targetloader_iter.__next__()
-        images, labels, _ = batch
-        images = Variable(images).cuda(async=True)
-        result = model(images, None)
-        del result
+        with torch.no_grad():
+            images, labels, _ = batch
+            images = Variable(images).cuda(async=True)
+            result = model(images, None)
+            del result
 
 
 
