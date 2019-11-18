@@ -711,3 +711,18 @@
 [line: 397] exp = ./snapshots/adabn_exp001
 [line: 406] Iter = [20/35000]	Time = 1.762	loss_seg1 = 0.000000	loss_seg2 = 0.8443	lr_encoder = 0.00159918 lr_decoder = 0.01599177
 [line: 409] remain_time: 17:07:23
+[line: 397] exp = ./snapshots/adabn_exp001
+[line: 406] Iter = [30/35000]	Time = 1.765	loss_seg1 = 0.000000	loss_seg2 = 0.7668	lr_encoder = 0.00159877 lr_decoder = 0.01598766
+[line: 409] remain_time: 17:08:38
+[line: 397] exp = ./snapshots/adabn_exp001
+[line: 406] Iter = [40/35000]	Time = 1.753	loss_seg1 = 0.000000	loss_seg2 = 0.6445	lr_encoder = 0.00159835 lr_decoder = 0.01598354
+[line: 409] remain_time: 17:01:16
+[line: 397] exp = ./snapshots/adabn_exp001
+[line: 406] Iter = [50/35000]	Time = 1.757	loss_seg1 = 0.000000	loss_seg2 = 0.6409	lr_encoder = 0.00159794 lr_decoder = 0.01597943
+[line: 409] remain_time: 17:03:27
+[line: 397] exp = ./snapshots/adabn_exp001
+[line: 406] Iter = [60/35000]	Time = 1.755	loss_seg1 = 0.000000	loss_seg2 = 0.6107	lr_encoder = 0.00159753 lr_decoder = 0.01597531
+[line: 409] remain_time: 17:02:03
+[line: 397] exp = ./snapshots/adabn_exp001
+[line: 406] Iter = [70/35000]	Time = 1.766	loss_seg1 = 0.000000	loss_seg2 = 0.5282	lr_encoder = 0.00159712 lr_decoder = 0.01597120
+[line: 409] remain_time: 17:08:14
