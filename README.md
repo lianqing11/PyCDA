@@ -58,13 +58,21 @@ sh run.sh train_adabn.py cfgs/adabn_exp001.yaml
 
 ### [PyCDA]()
 ```
-Will be available soon.
+sh run.sh train_pycda.py cfgs/pycda_exp001.yaml
 ```
 
+### [PyCDA + Spatial ratio]()
+'''
+sh run.sh train_pycda_spatial.py cfgs/pycda_spatial_ratio_exp001.yaml
+'''
+
+We convert the batchnorm statistics after optimization. 
 ### Convert batchnorm statistics
 ```
 sh run.sh test_adabn.py $your_script
 ```
+
+After adding the spatial ratio from  source domain, one could get around 47.7 - 48.2 mIoU  on Cityscapes validations set with the same iterations.
 ## Performance (GTAV-> Cityscapes)
 ![](fig/exp.PNG)
 

@@ -14,7 +14,7 @@ common:
     syncbn: True
     batch_size: 4
     iter_size: 1
-    num_workers: 4
+    num_workers: 1
     gaussian_kernel_size: 5
     gaussian_sigma: 0.8
     data_dir: /data/lianqing//workspace/Adapt_seg/data/GTA5
@@ -46,6 +46,7 @@ common:
     decrease_lr: 1500
     lambda_eq: 0.4
     #lambda_adv_multiscale: 0.00025
+    merge_1x1: True
     box_size: [ 4, 8]
     box_threshold: [0.5]
     lambda_box_pseudo: [0.05]

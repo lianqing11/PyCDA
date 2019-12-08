@@ -32,9 +32,11 @@ common:
     reconst: False
     lr_pow: 0.9
     conf_threshold: 0.5
-    lambda_pseudo: 0.5
+    #loss weight
+    lambda_pseudo: 1
     lambda_soft_pseudo: 0.025
     lambda_balance: 1
+    # learning rate
     lr_encoder: 0.00016
     lr_decoder: 0.0016
     lr_disc: 0.0016
@@ -45,6 +47,7 @@ common:
     lambda_adv_target1: 0
     lambda_adv_target2: 0
     #lambda_adv_multiscale: 0.00025
+    merge_1x1: False
     box_size: [4, 8]
     box_threshold: [0.5]
     lambda_box_pseudo: [0.05]

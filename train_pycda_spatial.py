@@ -410,7 +410,8 @@ def main():
 
 
         if len(args.box_size) > 0:
-            loss_bbx_att.append(loss_pseudo)
+            if args.merge_1x1:
+                loss_bbx_att.append(loss_pseudo)
             loss_bbx_att = torch.cat(loss_bbx_att, dim=0)
             bounding_num.update(loss_bbx_att.size(0) / float(560*480*args.batch_size))
             loss_bbx_att = torch.mean(loss_bbx_att)
@@ -426,6 +427,8 @@ def main():
 
         pseudo_num.update(loss_pseudo.size(0) / float(560*480*args.batch_size))
         loss_pseudo = torch.mean(loss_pseudo)
+        if not args.merge_1x1:
+            loss += args.lambda_pseudo * loss_pseudo
         loss = args.lambda_balance * equalise_cls_loss
         if not isinstance(loss_bbx_att, list):
             loss += args.lambda_pseudo * loss_bbx_att

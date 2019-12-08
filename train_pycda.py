@@ -362,12 +362,14 @@ def main():
         #optimizer.step()
         optimizer_encoder.step()
         optimizer_decoder.step()
+        del loss
+        del results, loss_seg2, loss_seg1
         #optimizer_disc.step()
 
         _, batch = targetloader_iter.__next__()
         images, fake_labels, _ = batch
-        images = Variable(images).cuda(async=True)
-        fake_labels = Variable(fake_labels, requires_grad=False).cuda()
+        images = Variable(images).cuda()
+        fake_labels = Variable(fake_labels).cuda()
         results = model(images, None)
         target_seg = results[0]
         conf_tea, pseudo_label = torch.max(nn.functional.softmax(target_seg), dim=1)
@@ -414,16 +416,15 @@ def main():
             loss_bbx_att_i = loss_bbx_att_i.view(-1)
             loss_bbx_att_i = loss_bbx_att_i[loss_bbx_att_i!=0]
             loss_bbx_att.append(loss_bbx_att_i)
-            pooling_result_i = pooling_result_i.mean(0).unsqueeze(0)
+        del pooling_result_i
 
 
 
         if len(args.box_size) > 0:
-            #loss_bbx_att.append(loss_pseudo)
+            if args.merge_1x1:
+                loss_bbx_att.append(loss_pseudo)
             loss_bbx_att = torch.cat(loss_bbx_att, dim=0)
             bounding_num.update(loss_bbx_att.size(0) / float(560*480*args.batch_size))
-            loss_bbx_att.append(loss_pseudo)
-            loss_bbx_att = torch.cat(loss_bbx_att, dim=0)
             loss_bbx_att = torch.mean(loss_bbx_att)
 
 
@@ -431,9 +432,9 @@ def main():
         pseudo_num.update(loss_pseudo.size(0) / float(560*480*args.batch_size))
         loss_pseudo = torch.mean(loss_pseudo)
         loss = args.lambda_balance * equalise_cls_loss
-        if isinstance(loss_bbx_att, list):
+        if not args.merge_1x1:
             loss += args.lambda_pseudo * loss_pseudo
-        else:
+        if not isinstance(loss_bbx_att, list):
             loss += args.lambda_pseudo * loss_bbx_att
         loss_pseudo_value.update(loss_pseudo.item())
         loss_balance_value.update(equalise_cls_loss.item())
@@ -509,34 +510,6 @@ def main():
 
                 val_time = time.time()
                 hist = np.zeros((19,19))
-                # f = open(args.result_dir, 'a')
-                # for index, batch in tqdm(enumerate(testloader)):
-                #     with torch.no_grad():
-                #         image, name = batch
-                #         results = model(Variable(image).cuda(), None)
-                #         output2 = results[0]
-                #         pred = interp_val(output2)
-                #         del output2
-                #         pred = pred.cpu().data[0].numpy()
-                #         pred = pred.transpose(1, 2, 0)
-                #         pred = np.asarray(np.argmax(pred, axis=2), dtype=np.uint8)
-                #         label = np.array(Image.open(gt_imgs_val[index]))
-                #         #label = np.array(label.resize(com_size, Image.
-                #         label = label_mapping(label, mapping)
-                #         #logger.info(label.shape)
-                #         hist += fast_hist(label.flatten(), pred.flatten(), 19)
-                # mIoUs = per_class_iu(hist)
-                # for ind_class in range(args.num_classes):
-                #     logger.info('===>' + name_classes[ind_class] + ':\t' + str(round(mIoUs[ind_class] * 100, 2)))
-                #     tb_logger.add_scalar(name_classes[ind_class] + '_mIoU', mIoUs[ind_class], i_iter)
-
-
-                # logger.info(mIoUs)
-                # tb_logger.add_scalar('val mIoU', mIoUs, i_iter)
-                # tb_logger.add_scalar('val mIoU', mIoUs, i_iter)
-                # f.write('i_iter:{:d},\tmiou:{:0.3f} \n'.format(i_iter, mIoUs))
-                # f.close()
-                # if mIoUs > best_mIoUs:
                 is_best = True
                 # best_mIoUs = mIoUs
                 #test validation
@@ -544,7 +517,7 @@ def main():
                 val_time = time.time()
                 hist = np.zeros((19,19))
                 # f = open(args.result_dir, 'a')
-                for index, batch in tqdm(enumerate(test1loader)):
+                for index, batch in tqdm(enumerate(valloader)):
                     with torch.no_grad():
                         image, name = batch
                         results = model(Variable(image).cuda(), None)
@@ -554,7 +527,7 @@ def main():
                         pred = pred.cpu().data[0].numpy()
                         pred = pred.transpose(1, 2, 0)
                         pred = np.asarray(np.argmax(pred, axis=2), dtype=np.uint8)
-                        label = np.array(Image.open(gt_imgs_test[index]))
+                        label = np.array(Image.open(gt_imgs_val[index]))
                         #label = np.array(label.resize(com_size, Image.
                         label = label_mapping(label, mapping)
                         #logger.info(label.shape)
