@@ -19,7 +19,7 @@ year = {2019}
 
 
 ## Framework
-![](./fig/model.PNG)
+![](./fig/model.png)
 
 ## Enviorment
 The code is developed under the following configuration.
@@ -75,11 +75,11 @@ sh run.sh test_adabn.py $your_script
 After adding the spatial ratio from  source domain, one could get around 47.7 - 48.2 mIoU  on Cityscapes validations set with the same iterations.
 
 ## Performance (GTAV-> Cityscapes)
-![](fig/exp.PNG)
+![](./fig/exp.png)
 
 
 ## Quantitative Results
-![](fig/quantitive.PNG)
+![](./fig/quantitive.png)
 
 
 
