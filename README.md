@@ -66,7 +66,7 @@ sh run.sh train_pycda.py cfgs/pycda_exp001.yaml
 sh run.sh train_pycda_spatial.py cfgs/pycda_spatial_ratio_exp001.yaml
 ```
 
-We convert the batchnorm statistics after optimization. 
+We convert the batchnorm statistics from source domain to target domain after optimization. 
 ### Convert batchnorm statistics
 ```
 sh run.sh test_adabn.py $your_script
